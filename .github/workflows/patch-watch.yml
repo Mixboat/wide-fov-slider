@@ -1,0 +1,61 @@
+name: Deadlock patch watch
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'   # every 6 hours
+  workflow_dispatch:
+    inputs:
+      simulate_failure:
+        description: 'Open a test alert issue (to check that email notifications arrive)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the game files the mod depends on
+        env:
+          SIMULATE_FAILURE: ${{ inputs.simulate_failure }}
+        run: python watch/check.py
+
+      - name: Open an issue for each new problem (GitHub emails the repo owner)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('report.json', 'utf8'));
+            const md = fs.readFileSync('report.md', 'utf8');
+            const open = await github.paginate(github.rest.issues.listForRepo, { owner: context.repo.owner, repo: context.repo.repo, state: 'open', per_page: 100 });
+            for (const f of report.failed) {
+              const tag = `[${f.key}]`;
+              if (open.some(i => i.title.includes(tag))) { core.info(`already open: ${tag}`); continue; }
+              const sev = f.severity === 'critical' ? 'CRITICAL' : 'WARNING';
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: `${sev}: ${f.title} ${tag}`,
+                body: `@Mixboat a Deadlock update may have broken the Wide FOV Slider.\n\n${md}\n\nMod page: https://gamebanana.com/mods/724244\n\nClose this issue once it is fixed; the check will open a new one if it breaks again.`,
+              });
+              core.info(`opened ${tag}`);
+            }
+
+      - name: Record the last checked game update (keeps the schedule alive)
+        run: |
+          sha=$(python -c "import json;print(json.load(open('report.json'))['build']['sha'])")
+          month=$(date -u +%Y-%m)
+          prev=$(cat watch/last_check.txt 2>/dev/null || true)
+          now="$sha $month"
+          if [ "$now" != "$prev" ]; then
+            echo "$now" > watch/last_check.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add watch/last_check.txt
+            git commit -m "Patch watch: checked $sha"
+            git push
+          fi
