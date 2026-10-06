@@ -29,6 +29,7 @@ checks = []
 MODS = {
     'wfov': {'name': 'Wide FOV Slider', 'page': 'https://gamebanana.com/mods/724244'},
     'hinv': {'name': 'Hide Investments', 'page': 'https://gamebanana.com/mods/724744'},
+    'odp': {'name': 'Old Damage Portraits', 'page': 'https://gamebanana.com/members/5889014'},
 }
 
 
@@ -106,6 +107,21 @@ check('hinv_badge_classes', 'critical', 'class="core_stat"' in st and 'stat_fx' 
 check('hinv_stats_panel', 'warning', 'id="hudActivePlayerStats"' in hud,
       'Active player stats panel renamed',
       '#hudActivePlayerStats is gone from hud.xml; the class backup falls back to a slower search by panel type.', mod='hinv')
+
+# 6) Old Damage Portraits: it ships its own copy of the damage-portrait stylesheet (Valve's current css + the old rules)
+di_css = get(P + 'styles/hud_damage_impact.css')
+exp_css = open(os.path.join(HERE, 'expected', 'hud_damage_impact.css'), encoding='utf-8').read()
+check('odp_css', 'warning', norm(di_css) == norm(exp_css),
+      'Valve changed hud_damage_impact.css',
+      'Old Damage Portraits overrides this stylesheet, so players miss whatever Valve changed (looks only, cannot crash). '
+      'Rebuild with build_old_damage_portraits.py (it re-reads the current css from pak01) and re-upload; then refresh expected/hud_damage_impact.css.', mod='odp')
+check('odp_css_hooks', 'critical', all(x in di_css for x in ('.healthBarContainer', 'active_damage_wiggle', 'healthBar_backer', '.playerName')),
+      'Damage-portrait css lost a rule the mod rewrites',
+      'build_old_damage_portraits.py will refuse to build until its OLD_LOOK rules are updated for the new css.', mod='odp')
+di_xml = get(P + 'layout/hud_damage_impact.xml')
+check('odp_layout', 'warning', norm(di_xml) == norm(open(os.path.join(HERE, 'expected', 'hud_damage_impact.xml'), encoding='utf-8').read()),
+      'Damage-portrait layout changed',
+      'The mod only ships css, so this cannot crash, but panel names may have changed: check the old look in game and update OLD_LOOK.', mod='odp')
 
 failed = [c for c in checks if not c['ok']]
 report = {'build': build, 'failed': failed, 'checks': checks}
