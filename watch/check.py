@@ -1,4 +1,4 @@
-"""Daily patch watch for the Wide FOV Slider Deadlock mod.
+"""Patch watch for the Wide FOV Slider and Hide Investments Deadlock mods.
 
 Reads SteamDB's GameTracking-Deadlock copy of the game files and checks everything the mod depends on.
 Writes report.json / report.md; the workflow opens a GitHub issue (which emails the repo owner) when a check fails.
@@ -26,8 +26,15 @@ def norm(xml):
 checks = []
 
 
-def check(key, severity, ok, title, detail):
-    checks.append({'key': key, 'severity': severity, 'ok': bool(ok), 'title': title, 'detail': detail})
+MODS = {
+    'wfov': {'name': 'Wide FOV Slider', 'page': 'https://gamebanana.com/mods/724244'},
+    'hinv': {'name': 'Hide Investments', 'page': 'https://gamebanana.com/mods/724744'},
+}
+
+
+def check(key, severity, ok, title, detail, mod='wfov'):
+    checks.append({'key': key, 'severity': severity, 'ok': bool(ok), 'title': title, 'detail': detail,
+                   'mod': MODS[mod]['name'], 'page': MODS[mod]['page']})
 
 
 try:
@@ -78,20 +85,42 @@ check('r_aspectratio_flags', 'warning', (not line) or line == 'r_aspectratio 0 (
       'r_aspectratio flags changed',
       'Now: `%s` (was `r_aspectratio 0 (developmentonly defensive)`). If it became a cheat convar, the slider stops working.' % line)
 
+# 5) Hide Investments: the two tiny layouts it ships with one script line added, and the badges it hides
+for name in ('team_status', 'hud_data_feed'):
+    live = norm(get(P + 'layout/%s.xml' % name))
+    expected = norm(open(os.path.join(HERE, 'expected', name + '.xml'), encoding='utf-8').read())
+    check('hinv_layout_' + name, 'critical', live == expected,
+          'Valve changed %s.xml' % name,
+          'Hide Investments ships its own copy of panorama/layout/%s with one script line added; the old copy now '
+          'overrides the new one. Rebuild with build_hide_investments.py (it reads the current file from pak01) and '
+          're-upload, then refresh watch/expected/%s.xml.' % (name, name), mod='hinv')
+st = get(P + 'layout/citadel_hud_active_player_stats.xml')
+check('hinv_badge_ids', 'warning', all(('id="%s"' % i) in st for i in ('HudStatBlock', 'CoreStats', 'CoreStatFXLayer')),
+      'Investment badge ids changed',
+      'One of #HudStatBlock / #CoreStats / #CoreStatFXLayer is gone from citadel_hud_active_player_stats.xml. '
+      'The class backup (core_stat / stat_fx parents) should still hide them; check in game and update IDS in hide_investments.js.', mod='hinv')
+check('hinv_badge_classes', 'critical', 'class="core_stat"' in st and 'stat_fx' in st,
+      'Investment badge classes changed',
+      'The backup classes core_stat / stat_fx are gone. If the badge ids changed too, the badges show again. '
+      'Update hide_investments.js.', mod='hinv')
+check('hinv_stats_panel', 'warning', 'id="hudActivePlayerStats"' in hud,
+      'Active player stats panel renamed',
+      '#hudActivePlayerStats is gone from hud.xml; the class backup falls back to a slower search by panel type.', mod='hinv')
+
 failed = [c for c in checks if not c['ok']]
 report = {'build': build, 'failed': failed, 'checks': checks}
 json.dump(report, open('report.json', 'w'), indent=2)
 
 lines = ['Latest tracked Deadlock update: `%s` (%s, %s)' % (build['message'], build['date'][:10], build['sha'][:10]), '']
 for c in checks:
-    lines.append('- %s **%s** %s' % ('OK' if c['ok'] else ('CRITICAL' if c['severity'] == 'critical' else 'WARNING'), c['key'], '' if c['ok'] else '- ' + c['title']))
+    lines.append('- %s **%s** (%s) %s' % ('OK' if c['ok'] else ('CRITICAL' if c['severity'] == 'critical' else 'WARNING'), c['key'], c['mod'], '' if c['ok'] else '- ' + c['title']))
 if failed:
     lines += ['', '### What broke', '']
     for c in failed:
-        lines += ['**%s** (%s): %s' % (c['title'], c['severity'], c['detail']), '']
+        lines += ['**%s: %s** (%s): %s' % (c['mod'], c['title'], c['severity'], c['detail']), '']
 open('report.md', 'w').write('\n'.join(lines) + '\n')
 print('\n'.join(lines))
 if os.environ.get('SIMULATE_FAILURE') == 'true' and not failed:
-    report['failed'] = [{'key': 'test', 'severity': 'warning', 'ok': False, 'title': 'Test alert (simulated)', 'detail': 'Manual test run; nothing is broken.'}]
+    report['failed'] = [{'key': 'test', 'severity': 'warning', 'ok': False, 'title': 'Test alert (simulated)', 'detail': 'Manual test run; nothing is broken.', 'mod': 'Wide FOV Slider + Hide Investments', 'page': 'https://gamebanana.com/members/5889014'}]
     json.dump(report, open('report.json', 'w'), indent=2)
 sys.exit(0)
