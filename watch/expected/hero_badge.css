@@ -1,0 +1,582 @@
+/* Prettified by Source 2 Viewer - https://valveresourceformat.github.io */
+
+@define tierBronzeWash: #bea081;
+@define tierSilverWash: #98cdd6;
+@define tierGoldWash: #c4bf92;
+@define tierPlatinumWash: #b2b6d3;
+@define tierMaster: #9489a1;
+@define tierGrandmasterWash: #49494e;
+CitadelHeroBadge.TierNone .BadgeIcon,CitadelHeroBadgeSmall.TierNone .BadgeIcon,CitadelHeroBadgeProgress.TierNone .BadgeIcon,CitadelHeroBadgeIcon.TierNone .BadgeIcon
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_0_psd.vtex");
+}
+
+CitadelHeroBadge.TierBronze .BadgeIcon,CitadelHeroBadgeSmall.TierBronze .BadgeIcon,CitadelHeroBadgeProgress.TierBronze .BadgeIcon,CitadelHeroBadgeIcon.TierBronze .BadgeIcon
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_1_psd.vtex");
+}
+
+CitadelHeroBadge.TierSilver .BadgeIcon,CitadelHeroBadgeSmall.TierSilver .BadgeIcon,CitadelHeroBadgeProgress.TierSilver .BadgeIcon,CitadelHeroBadgeIcon.TierSilver .BadgeIcon
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_2_psd.vtex");
+}
+
+CitadelHeroBadge.TierGold .BadgeIcon,CitadelHeroBadgeSmall.TierGold .BadgeIcon,CitadelHeroBadgeProgress.TierGold .BadgeIcon,CitadelHeroBadgeIcon.TierGold .BadgeIcon
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_3_psd.vtex");
+}
+
+CitadelHeroBadge.TierPlatinum .BadgeIcon,CitadelHeroBadgeSmall.TierPlatinum .BadgeIcon,CitadelHeroBadgeProgress.TierPlatinum .BadgeIcon,CitadelHeroBadgeIcon.TierPlatinum .BadgeIcon
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_4_psd.vtex");
+}
+
+CitadelHeroBadge.TierMaster .BadgeIcon,CitadelHeroBadgeSmall.TierMaster .BadgeIcon,CitadelHeroBadgeProgress.TierMaster .BadgeIcon,CitadelHeroBadgeIcon.TierMaster .BadgeIcon
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_5_psd.vtex");
+}
+
+CitadelHeroBadge.TierGrandmaster .BadgeIcon,CitadelHeroBadgeSmall.TierGrandmaster .BadgeIcon,CitadelHeroBadgeProgress.TierGrandmaster .BadgeIcon,CitadelHeroBadgeIcon.TierGrandmaster .BadgeIcon
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_6_psd.vtex");
+}
+
+CitadelHeroBadge.TierBronze .BadgeRing,CitadelHeroBadgeSmall.TierBronze .BadgeRing,CitadelHeroBadgeProgress.TierBronze .BadgeRing,CitadelHeroBadgeIcon.TierBronze .BadgeRing
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_1_ring_psd.vtex");
+}
+
+CitadelHeroBadge.TierSilver .BadgeRing,CitadelHeroBadgeSmall.TierSilver .BadgeRing,CitadelHeroBadgeProgress.TierSilver .BadgeRing,CitadelHeroBadgeIcon.TierSilver .BadgeRing
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_2_ring_psd.vtex");
+}
+
+CitadelHeroBadge.TierGold .BadgeRing,CitadelHeroBadgeSmall.TierGold .BadgeRing,CitadelHeroBadgeProgress.TierGold .BadgeRing,CitadelHeroBadgeIcon.TierGold .BadgeRing
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_3_ring_psd.vtex");
+}
+
+CitadelHeroBadge.TierPlatinum .BadgeRing,CitadelHeroBadgeSmall.TierPlatinum .BadgeRing,CitadelHeroBadgeProgress.TierPlatinum .BadgeRing,CitadelHeroBadgeIcon.TierPlatinum .BadgeRing
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_4_ring_psd.vtex");
+}
+
+CitadelHeroBadge.TierMaster .BadgeRing,CitadelHeroBadgeSmall.TierMaster .BadgeRing,CitadelHeroBadgeProgress.TierMaster .BadgeRing,CitadelHeroBadgeIcon.TierMaster .BadgeRing
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_5_ring_psd.vtex");
+}
+
+CitadelHeroBadge.TierGrandmaster .BadgeRing,CitadelHeroBadgeSmall.TierGrandmaster .BadgeRing,CitadelHeroBadgeProgress.TierGrandmaster .BadgeRing,CitadelHeroBadgeIcon.TierGrandmaster .BadgeRing
+{
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_rank_6_ring_psd.vtex");
+}
+
+CitadelHeroBadge .ShowsProgression,CitadelHeroBadgeSmall .ShowsProgression,CitadelHeroBadgeProgress .ShowsProgression,CitadelHeroBadgeIcon .ShowsProgression
+{
+	visibility: collapse;
+}
+
+.uiShowHeroProgression CitadelHeroBadge .ShowsProgression,.uiShowHeroProgression CitadelHeroBadgeSmall .ShowsProgression,.uiShowHeroProgression CitadelHeroBadgeProgress .ShowsProgression,.uiShowHeroProgression CitadelHeroBadgeIcon .ShowsProgression
+{
+	visibility: visible;
+}
+
+.uiShowHeroProgression CitadelHeroBadge .ShowsProgression.TierBronze .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeSmall .ShowsProgression.TierBronze .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeProgress .ShowsProgression.TierBronze .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeIcon .ShowsProgression.TierBronze .BadgeBackground
+{
+	wash-color: tierBronzeWash;
+}
+
+.uiShowHeroProgression CitadelHeroBadge .ShowsProgression.TierSilver .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeSmall .ShowsProgression.TierSilver .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeProgress .ShowsProgression.TierSilver .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeIcon .ShowsProgression.TierSilver .BadgeBackground
+{
+	wash-color: tierSilverWash;
+}
+
+.uiShowHeroProgression CitadelHeroBadge .ShowsProgression.TierGold .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeSmall .ShowsProgression.TierGold .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeProgress .ShowsProgression.TierGold .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeIcon .ShowsProgression.TierGold .BadgeBackground
+{
+	wash-color: tierGoldWash;
+}
+
+.uiShowHeroProgression CitadelHeroBadge .ShowsProgression.TierPlatinum .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeSmall .ShowsProgression.TierPlatinum .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeProgress .ShowsProgression.TierPlatinum .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeIcon .ShowsProgression.TierPlatinum .BadgeBackground
+{
+	wash-color: tierPlatinumWash;
+}
+
+.uiShowHeroProgression CitadelHeroBadge .ShowsProgression.TierMaster .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeSmall .ShowsProgression.TierMaster .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeProgress .ShowsProgression.TierMaster .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeIcon .ShowsProgression.TierMaster .BadgeBackground
+{
+	wash-color: tierMaster;
+}
+
+.uiShowHeroProgression CitadelHeroBadge .ShowsProgression.TierGrandmaster .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeSmall .ShowsProgression.TierGrandmaster .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeProgress .ShowsProgression.TierGrandmaster .BadgeBackground,.uiShowHeroProgression CitadelHeroBadgeIcon .ShowsProgression.TierGrandmaster .BadgeBackground
+{
+	wash-color: tierGrandmasterWash;
+}
+
+CitadelHeroBadgeIcon
+{
+	visibility: collapse;
+}
+
+.uiShowHeroProgression CitadelHeroBadgeIcon
+{
+	visibility: visible;
+}
+
+CitadelHeroBadge
+{
+	width: 88px;
+	height: 120px;
+}
+
+CitadelHeroBadge .HeroImageContainer
+{
+	width: 80%;
+	vertical-align: top;
+	horizontal-align: center;
+}
+
+CitadelHeroBadge .HeroImageBackground
+{
+	background-color: gradient( radial, 50% 50%, -5% -5%, 60% 60%, from( #424640), to( #252722 ) );
+	background-color: #424640;
+	border-radius: 50%;
+	width: 100%;
+	height: width-percentage (100%);
+	vertical-align: bottom;
+}
+
+CitadelHeroBadge #HeroImage
+{
+	opacity-mask: url("s2r://panorama/images/hero_badges/hero_image_mask_psd.vtex");
+}
+
+CitadelHeroBadge .BadgeIcon
+{
+	width: 44px;
+	height: 44px;
+	vertical-align: bottom;
+	horizontal-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+	img-shadow: 0px 0px 12px #000000aa;
+}
+
+CitadelHeroBadge .BadgeRing
+{
+	width: 100%;
+	height: 100%;
+	margin-top: 17px;
+	vertical-align: center;
+	horizontal-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+}
+
+CitadelHeroBadge .HeroLevel
+{
+	horizontal-align: center;
+	text-align: center;
+	vertical-align: bottom;
+	font-size: 17px;
+	font-weight: bold;
+	text-shadow: 0px 0px 8px #000000aa;
+	margin-bottom: 10px;
+}
+
+CitadelHeroBadge .BadgeBackground
+{
+	background-color: gradient( radial, 50% 50%, -5% -5%, 60% 60%, from( #424640), to( #252722 ) );
+	background-color: #424640;
+	border-radius: 50%;
+	width: 100%;
+	height: width-percentage (100%);
+	margin-top: 16px;
+	horizontal-align: center;
+}
+
+CitadelHeroBadge.TierNone .HeroLevel
+{
+	visibility: collapse;
+}
+
+CitadelHeroBadge.TierNone .BadgeBackground
+{
+	width: 80%;
+	margin-top: 24px;
+}
+
+CitadelHeroBadgeProgress
+{
+	width: 88px;
+	height: 120px;
+}
+
+CitadelHeroBadgeProgress .HeroImageContainer
+{
+	width: 80%;
+	vertical-align: top;
+	horizontal-align: center;
+}
+
+CitadelHeroBadgeProgress .HeroImageBackground
+{
+	background-color: gradient( radial, 50% 50%, -5% -5%, 60% 60%, from( #424640), to( #252722 ) );
+	background-color: #424640;
+	border-radius: 50%;
+	width: 100%;
+	height: width-percentage (100%);
+	vertical-align: bottom;
+}
+
+CitadelHeroBadgeProgress #HeroImage
+{
+	opacity-mask: url("s2r://panorama/images/hero_badges/hero_image_mask_psd.vtex");
+}
+
+CitadelHeroBadgeProgress .BadgeIcon
+{
+	width: 44px;
+	height: 44px;
+	vertical-align: bottom;
+	horizontal-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+	img-shadow: 0px 0px 12px #000000aa;
+}
+
+CitadelHeroBadgeProgress .BadgeRing
+{
+	width: 100%;
+	height: 100%;
+	margin-top: 17px;
+	vertical-align: center;
+	horizontal-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+}
+
+CitadelHeroBadgeProgress .HeroLevel
+{
+	horizontal-align: center;
+	text-align: center;
+	vertical-align: bottom;
+	font-size: 18px;
+	font-weight: bold;
+	text-shadow: 0px 0px 8px #000000aa;
+	margin-bottom: 10px;
+}
+
+CitadelHeroBadgeProgress .BadgeBackground
+{
+	background-color: gradient( radial, 50% 50%, -5% -5%, 60% 60%, from( #424640), to( #252722 ) );
+	background-color: #424640;
+	border-radius: 50%;
+	width: 100%;
+	height: width-percentage (100%);
+	margin-top: 16px;
+	horizontal-align: center;
+}
+
+CitadelHeroBadgeProgress .BadgeRingInset
+{
+	width: 100%;
+	height: 100%;
+	margin-top: 16px;
+	vertical-align: center;
+	horizontal-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_inset_ring_psd.vtex");
+}
+
+CitadelHeroBadgeProgress #BadgeRingBaseXP
+{
+	width: 100%;
+	height: 100%;
+	margin-top: 16px;
+	vertical-align: center;
+	horizontal-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_active_ring_psd.vtex");
+}
+
+CitadelHeroBadgeProgress #BadgeRingProgressXP
+{
+	width: 100%;
+	height: 100%;
+	margin-top: 16px;
+	vertical-align: center;
+	horizontal-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-image: url("s2r://panorama/images/hero_badges/hero_badge_active_ring_progress_psd.vtex");
+}
+
+CitadelHeroBadgeProgress.TierNone .HeroLevel
+{
+	visibility: collapse;
+}
+
+CitadelHeroBadgeProgress.TierNone .BadgeRingProgress
+{
+	visibility: collapse;
+}
+
+CitadelHeroBadgeProgress.TierNone #BadgeRingProgressActive
+{
+	visibility: collapse;
+}
+
+CitadelHeroBadgeProgress.TierNone .BadgeBackground
+{
+	width: 80%;
+	margin-top: 24px;
+}
+
+CitadelHeroBadgeSmall
+{
+	width: 36px;
+	height: 48px;
+}
+
+CitadelHeroBadgeSmall .HeroImageContainer
+{
+	width: 98%;
+	border-radius: 50%;
+}
+
+CitadelHeroBadgeSmall .HeroImageBackground
+{
+	background-color: gradient( radial, 50% 50%, -5% -5%, 60% 60%, from( #424640), to( #252722 ) );
+	background-color: #424640;
+	width: 100%;
+	height: width-percentage (100%);
+}
+
+CitadelHeroBadgeSmall #HeroImage
+{
+	width: 100%;
+	height: 100%;
+}
+
+CitadelHeroBadgeSmall .BadgeIcon
+{
+	width: 36%;
+	height: 36%;
+	vertical-align: bottom;
+	margin-bottom: 4px;
+	horizontal-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+	img-shadow: 0px 0px 12px #000000aa;
+}
+
+CitadelHeroBadgeSmall .BadgeRing
+{
+	width: 100%;
+	height: 100%;
+	vertical-align: center;
+	horizontal-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+	img-shadow: 0px 0px 20px #000000aa;
+}
+
+CitadelHeroBadgeSmall .BadgeBackground
+{
+	background-color: gradient( radial, 50% 50%, -5% -5%, 60% 60%, from( #424640), to( #252722 ) );
+	background-color: #424640;
+	border-radius: 50%;
+	width: 100%;
+	height: width-percentage (100%);
+	horizontal-align: center;
+}
+
+CitadelHeroBadgeSmall.PostGameScoreboard .BadgeIcon
+{
+	visibility: collapse;
+}
+
+CitadelHeroBadgeIcon
+{
+	width: 64px;
+	height: 64px;
+}
+
+CitadelHeroBadgeIcon .BadgeIcon
+{
+	width: 100%;
+	height: 100%;
+	vertical-align: bottom;
+	horizontal-align: center;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+	img-shadow: 0px 0px 12px #000000aa;
+}
+
+CitadelHeroBadgeIcon .HeroLevel
+{
+	horizontal-align: center;
+	text-align: center;
+	vertical-align: center;
+	font-size: 18px;
+	font-weight: bold;
+	text-shadow: 0 0 0 4 #070707;
+}
+
+CitadelHeroBadgeIcon.TierNone
+{
+	visibility: collapse;
+}
+
+CitadelHeroBadgeIcon.PostGame
+{
+	opacity: 0.5;
+}
+
+CitadelHeroBadgeIcon.PostGame .HeroLevel
+{
+	font-size: 25px;
+}
+
+CitadelHeroBadgeIcon.MVP,CitadelHeroBadgeIcon.RosterSelect
+{
+	width: 160px;
+	height: 160px;
+}
+
+CitadelHeroBadgeIcon.MVP .HeroLevel,CitadelHeroBadgeIcon.RosterSelect .HeroLevel
+{
+	font-size: 40px;
+}
+
+.uiShowHeroProgression CitadelHeroBadgeIcon.PostGameScoreboard.TierNone
+{
+	visibility: visible;
+	opacity: 0;
+}
+
+.uiShowHeroProgression CitadelHeroBadgeIcon.PostGameScoreboard .HeroLevel
+{
+	font-size: 25px;
+}
+
+CitadelHudTopBarPlayer.SpectatorTarget CitadelHeroBadge .HeroImageBackground,CitadelHudTopBarPlayer.LocalPlayer CitadelHeroBadge .HeroImageBackground
+{
+	opacity: 0;
+}
+
+.team1 CitadelHeroBadge.TopBar .HeroImageBackground
+{
+	background-color: team1Color;
+}
+
+.team2 CitadelHeroBadge.TopBar .HeroImageBackground
+{
+	background-color: team2Color;
+}
+
+CitadelHudTopBarPlayer.KillStreak CitadelHeroBadge .HeroImageBackground
+{
+	background-color: #90FFE3;
+}
+
+.team1 CitadelHudTopBarPlayer.healthLow CitadelHeroBadge .HeroImageBackground,.team2 CitadelHudTopBarPlayer.healthLow CitadelHeroBadge .HeroImageBackground
+{
+	background-color: #b02727;
+	animation-name: LowHealthFlash;
+	animation-iteration-count: infinite;
+	animation-duration: 0.7s;
+	box-shadow: 0px 0px 20px #b02727;
+}
+
+CitadelHudTopBarPlayer.Dead CitadelHeroBadge #HeroImage
+{
+	saturation: 0;
+	brightness: 0.2;
+}
+
+CitadelHudTopBarPlayer.Dead CitadelHeroBadge .HeroImageBackground
+{
+	background-color: offBlack&ee;
+}
+
+@keyframes 'LowHealthFlash'
+{
+	0%
+	{
+		background-color: #b02727;
+		box-shadow: 0px 0px 20px #b02727;
+	}
+	
+	50%
+	{
+		background-color: #ff3c3c;
+		box-shadow: 0px 0px 20px #ff3c3c;
+	}
+	
+	100%
+	{
+		background-color: #b02727;
+		box-shadow: 0px 0px 20px #b02727;
+	}
+	
+}
+
+.healthLow #HeroImage
+{
+	wash-color: colorEnemy&90;
+	animation-name: LowHealthPortraitFlash;
+	animation-iteration-count: infinite;
+	animation-duration: 0.7s;
+}
+
+@keyframes 'LowHealthPortraitFlash'
+{
+	0%
+	{
+		wash-color: colorEnemy&50;
+	}
+	
+	50%
+	{
+		wash-color: colorEnemy&00;
+	}
+	
+	100%
+	{
+		wash-color: colorEnemy&50;
+	}
+	
+}
+
+.damageImpactInstance.team1 CitadelHeroBadge .HeroImageBackground
+{
+	background-color: team1Color;
+}
+
+.damageImpactInstance.team2 CitadelHeroBadge .HeroImageBackground
+{
+	background-color: team2Color;
+}
+
+.damageImpactInstance.team1.Critical CitadelHeroBadge .HeroImageBackground,.damageImpactInstance.team2.Critical CitadelHeroBadge .HeroImageBackground
+{
+	background-color: #b02727;
+	animation-name: LowHealthFlash;
+	animation-iteration-count: infinite;
+	animation-duration: 0.7s;
+	box-shadow: 0px 0px 20px #b02727;
+}
+
+.damageImpactInstance.killed CitadelHeroBadge .HeroImageBackground,.damageImpactInstance.assist CitadelHeroBadge .HeroImageBackground
+{
+	background-color: #b02727;
+	animation-iteration-count: infinite;
+	animation-duration: 0.7s;
+}
+
