@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'">
+<title>WFOV_INIT</title>
+</head>
+<body>
+<!-- Wide FOV Slider (Deadlock mod) settings storage.
+     The mod loads this page in a hidden in-game browser panel and keeps a few numbers in this page's localStorage.
+     Requests arrive in the URL fragment as JSON, answers go out through the page title. Nothing is sent anywhere. -->
+<script>
+(function () {
+    'use strict';
+    if (window.top !== window.self) return;
+    var KEY = 'wide_fov_slider';
+    var NAMES = /^(v|injectOk|injectFail|hudSeen|menuBoot)$/;
+    function load() {
+        try { var o = JSON.parse(localStorage.getItem(KEY) || '{}'); return o && typeof o === 'object' ? o : {}; }
+        catch (e) { return {}; }
+    }
+    function reply(n, obj) { document.title = 'WFOV:' + n + ':' + JSON.stringify(obj); }
+    function handle() {
+        var h = location.hash.slice(1);
+        if (!h) { reply(0, load()); return; }
+        var m;
+        try { m = JSON.parse(decodeURIComponent(h)); } catch (e) { return; }
+        if (!m || typeof m !== 'object') return;
+        var n = String(Math.floor(Number(m.n) || 0));
+        var s = load();
+        if (m.set && typeof m.set === 'object') {
+            for (var k in m.set) {
+                if (!Object.prototype.hasOwnProperty.call(m.set, k) || !NAMES.test(k)) continue;
+                var v = m.set[k];
+                if (typeof v === 'number' && isFinite(v)) s[k] = v;
+            }
+            try { localStorage.setItem(KEY, JSON.stringify(s)); }
+            catch (e) { reply(n, { error: String(e && e.message || e) }); return; }
+        }
+        reply(n, s);
+    }
+    window.addEventListener('hashchange', handle);
+    handle();
+})();
+</script>
+</body>
+</html>
