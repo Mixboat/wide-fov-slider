@@ -108,19 +108,18 @@ check('hinv_stats_panel', 'warning', 'id="hudActivePlayerStats"' in hud,
       'Active player stats panel renamed',
       '#hudActivePlayerStats is gone from hud.xml; the class backup falls back to a slower search by panel type.', mod='hinv')
 
-# 6) Old Damage Portraits: it ships its own copies of three stylesheets (Valve's current css + the old rules)
-for name in ('hud_damage_impact', 'hero_badge', 'citadel_hud_top_bar'):
+# 6) Old Damage Portraits: it ships its own copies of two stylesheets (Valve's current css + the old rules)
+for name in ('hud_damage_impact', 'hero_badge'):
     live = get(P + 'styles/%s.css' % name)
     expected = open(os.path.join(HERE, 'expected', name + '.css'), encoding='utf-8').read()
     check('odp_css_' + name, 'warning', norm(live) == norm(expected),
           'Valve changed %s.css' % name,
           'Old Damage Portraits overrides this stylesheet, so players miss whatever Valve changed (looks only, cannot crash). '
           'Rebuild with build_old_damage_portraits.py (it re-reads the current css from pak01) and re-upload; then refresh expected/%s.css.' % name, mod='odp')
-di_css = get(P + 'styles/hud_damage_impact.css'); tb_css = get(P + 'styles/citadel_hud_top_bar.css'); hb_css = get(P + 'styles/hero_badge.css')
+di_css = get(P + 'styles/hud_damage_impact.css'); hb_css = get(P + 'styles/hero_badge.css')
 check('odp_css_hooks', 'critical',
       all(x in di_css for x in ('.healthBarContainer', 'active_damage_wiggle', 'healthbar_backer_horiz_mask', 'healthbar_backer_horiz_border', 'healthBar_backer', '.playerName', 'KillAssistContainer'))
-      and all(x in tb_css for x in ('#HealthBar', 'HealthBar_Contents', 'HealthBar_Border', 'HealthBar_Fill', 'healthbar_backer_vert_mask', 'healthbar_backer_vert_border'))
-      and 'HeroImageBackground' in hb_css,
+      and all(x in hb_css for x in ('HeroImageBackground', 'CitadelHeroBadge #HeroImage')),
       'A stylesheet lost a rule the mod rewrites',
       'build_old_damage_portraits.py will refuse to build until its old-look rules are updated for the new css.', mod='odp')
 di_xml = get(P + 'layout/hud_damage_impact.xml')
