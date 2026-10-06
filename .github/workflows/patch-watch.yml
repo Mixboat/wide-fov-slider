@@ -39,8 +39,8 @@ jobs:
               const sev = f.severity === 'critical' ? 'CRITICAL' : 'WARNING';
               await github.rest.issues.create({
                 owner: context.repo.owner, repo: context.repo.repo,
-                title: `${sev}: ${f.title} ${tag}`,
-                body: `@Mixboat a Deadlock update may have broken the Wide FOV Slider.\n\n${md}\n\nMod page: https://gamebanana.com/mods/724244\n\nClose this issue once it is fixed; the check will open a new one if it breaks again.`,
+                title: `${sev}: ${f.mod}: ${f.title} ${tag}`,
+                body: `@Mixboat a Deadlock update may have broken ${f.mod}.\n\n${md}\n\nMod page: ${f.page}\n\nClose this issue once it is fixed; the check will open a new one if it breaks again.`,
               });
               core.info(`opened ${tag}`);
             }
