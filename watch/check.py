@@ -108,20 +108,25 @@ check('hinv_stats_panel', 'warning', 'id="hudActivePlayerStats"' in hud,
       'Active player stats panel renamed',
       '#hudActivePlayerStats is gone from hud.xml; the class backup falls back to a slower search by panel type.', mod='hinv')
 
-# 6) Old Damage Portraits: it ships its own copy of the damage-portrait stylesheet (Valve's current css + the old rules)
-di_css = get(P + 'styles/hud_damage_impact.css')
-exp_css = open(os.path.join(HERE, 'expected', 'hud_damage_impact.css'), encoding='utf-8').read()
-check('odp_css', 'warning', norm(di_css) == norm(exp_css),
-      'Valve changed hud_damage_impact.css',
-      'Old Damage Portraits overrides this stylesheet, so players miss whatever Valve changed (looks only, cannot crash). '
-      'Rebuild with build_old_damage_portraits.py (it re-reads the current css from pak01) and re-upload; then refresh expected/hud_damage_impact.css.', mod='odp')
-check('odp_css_hooks', 'critical', all(x in di_css for x in ('.healthBarContainer', 'active_damage_wiggle', 'healthBar_backer', '.playerName')),
-      'Damage-portrait css lost a rule the mod rewrites',
-      'build_old_damage_portraits.py will refuse to build until its OLD_LOOK rules are updated for the new css.', mod='odp')
+# 6) Old Damage Portraits: it ships its own copies of three stylesheets (Valve's current css + the old rules)
+for name in ('hud_damage_impact', 'hero_badge', 'citadel_hud_top_bar'):
+    live = get(P + 'styles/%s.css' % name)
+    expected = open(os.path.join(HERE, 'expected', name + '.css'), encoding='utf-8').read()
+    check('odp_css_' + name, 'warning', norm(live) == norm(expected),
+          'Valve changed %s.css' % name,
+          'Old Damage Portraits overrides this stylesheet, so players miss whatever Valve changed (looks only, cannot crash). '
+          'Rebuild with build_old_damage_portraits.py (it re-reads the current css from pak01) and re-upload; then refresh expected/%s.css.' % name, mod='odp')
+di_css = get(P + 'styles/hud_damage_impact.css'); tb_css = get(P + 'styles/citadel_hud_top_bar.css'); hb_css = get(P + 'styles/hero_badge.css')
+check('odp_css_hooks', 'critical',
+      all(x in di_css for x in ('.healthBarContainer', 'active_damage_wiggle', 'healthbar_backer_horiz_mask', 'healthbar_backer_horiz_border', 'healthBar_backer', '.playerName', 'KillAssistContainer'))
+      and all(x in tb_css for x in ('#HealthBar', 'HealthBar_Contents', 'HealthBar_Border', 'HealthBar_Fill', 'healthbar_backer_vert_mask', 'healthbar_backer_vert_border'))
+      and 'HeroImageBackground' in hb_css,
+      'A stylesheet lost a rule the mod rewrites',
+      'build_old_damage_portraits.py will refuse to build until its old-look rules are updated for the new css.', mod='odp')
 di_xml = get(P + 'layout/hud_damage_impact.xml')
 check('odp_layout', 'warning', norm(di_xml) == norm(open(os.path.join(HERE, 'expected', 'hud_damage_impact.xml'), encoding='utf-8').read()),
       'Damage-portrait layout changed',
-      'The mod only ships css, so this cannot crash, but panel names may have changed: check the old look in game and update OLD_LOOK.', mod='odp')
+      'The mod only ships css, so this cannot crash, but panel names may have changed: check the old look in game and update the rules.', mod='odp')
 
 failed = [c for c in checks if not c['ok']]
 report = {'build': build, 'failed': failed, 'checks': checks}
