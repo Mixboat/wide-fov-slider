@@ -29,7 +29,7 @@ checks = []
 MODS = {
     'wfov': {'name': 'Wide FOV Slider', 'page': 'https://gamebanana.com/mods/724244'},
     'hinv': {'name': 'Hide Investments', 'page': 'https://gamebanana.com/mods/724744'},
-    'odp': {'name': 'Old Damage Portraits', 'page': 'https://gamebanana.com/members/5889014'},
+    'odp': {'name': 'Old Damage Portraits', 'page': 'https://gamebanana.com/mods/724869'},
 }
 
 
