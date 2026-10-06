@@ -13,11 +13,17 @@
 (function () {
     'use strict';
     if (window.top !== window.self) return;
-    var KEY = 'wide_fov_slider';
+    // each value lives under its own key, so the mod's two copies can write at the same time without losing updates
+    var PREFIX = 'wide_fov_slider.';
     var NAMES = /^(v|injectOk|injectFail|hudSeen|menuBoot)$/;
+    var ALL = ['v', 'injectOk', 'injectFail', 'hudSeen', 'menuBoot'];
     function load() {
-        try { var o = JSON.parse(localStorage.getItem(KEY) || '{}'); return o && typeof o === 'object' ? o : {}; }
-        catch (e) { return {}; }
+        var o = {};
+        for (var i = 0; i < ALL.length; i++) {
+            var x = parseFloat(localStorage.getItem(PREFIX + ALL[i]));
+            if (isFinite(x)) o[ALL[i]] = x;
+        }
+        return o;
     }
     function reply(n, obj) { document.title = 'WFOV:' + n + ':' + JSON.stringify(obj); }
     function handle() {
@@ -27,17 +33,16 @@
         try { m = JSON.parse(decodeURIComponent(h)); } catch (e) { return; }
         if (!m || typeof m !== 'object') return;
         var n = String(Math.floor(Number(m.n) || 0));
-        var s = load();
         if (m.set && typeof m.set === 'object') {
-            for (var k in m.set) {
-                if (!Object.prototype.hasOwnProperty.call(m.set, k) || !NAMES.test(k)) continue;
-                var v = m.set[k];
-                if (typeof v === 'number' && isFinite(v)) s[k] = v;
-            }
-            try { localStorage.setItem(KEY, JSON.stringify(s)); }
-            catch (e) { reply(n, { error: String(e && e.message || e) }); return; }
+            try {
+                for (var k in m.set) {
+                    if (!Object.prototype.hasOwnProperty.call(m.set, k) || !NAMES.test(k)) continue;
+                    var v = m.set[k];
+                    if (typeof v === 'number' && isFinite(v)) localStorage.setItem(PREFIX + k, String(v));
+                }
+            } catch (e) { reply(n, { error: String(e && e.message || e) }); return; }
         }
-        reply(n, s);
+        reply(n, load());
     }
     window.addEventListener('hashchange', handle);
     handle();
