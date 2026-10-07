@@ -1,4 +1,4 @@
-"""Patch watch for the Wide FOV Slider and Hide Investments Deadlock mods.
+"""Patch watch for the Wide FOV Slider, Hide Investments, Old Damage Portraits and Shop Notes Deadlock mods.
 
 Reads SteamDB's GameTracking-Deadlock copy of the game files and checks everything the mod depends on.
 Writes report.json / report.md; the workflow opens a GitHub issue (which emails the repo owner) when a check fails.
@@ -30,6 +30,7 @@ MODS = {
     'wfov': {'name': 'Wide FOV Slider', 'page': 'https://gamebanana.com/mods/724244'},
     'hinv': {'name': 'Hide Investments', 'page': 'https://gamebanana.com/mods/724744'},
     'odp': {'name': 'Old Damage Portraits', 'page': 'https://gamebanana.com/mods/724869'},
+    'sn': {'name': 'Shop Notes', 'page': 'https://gamebanana.com/requests/97453'},
 }
 
 
@@ -126,6 +127,23 @@ di_xml = get(P + 'layout/hud_damage_impact.xml')
 check('odp_layout', 'warning', norm(di_xml) == norm(open(os.path.join(HERE, 'expected', 'hud_damage_impact.xml'), encoding='utf-8').read()),
       'Damage-portrait layout changed',
       'The mod only ships css, so this cannot crash, but panel names may have changed: check the old look in game and update the rules.', mod='odp')
+
+# 7) Shop Notes: two tiny HUD layouts with one script line added, and the shop panels it adds the Notes tab to
+for name in ('hud_modifiers', 'hud_ability_panels_container'):
+    live = norm(get(P + 'layout/%s.xml' % name))
+    expected = norm(open(os.path.join(HERE, 'expected', name + '.xml'), encoding='utf-8').read())
+    check('sn_layout_' + name, 'critical', live == expected,
+          'Valve changed %s.xml' % name,
+          'Shop Notes ships its own copy of panorama/layout/%s with one script line added; the old copy now overrides the new one. '
+          'Rebuild with build_shop_notes.py (it reads the current file from pak01) and re-upload, then refresh watch/expected/%s.xml.' % (name, name), mod='sn')
+shop = get(P + 'layout/citadel_hud_hero_shop.xml')
+check('sn_shop_ids', 'critical', all(('id="%s"' % i) in shop for i in ('ShopNavigation', 'ShopModListsContainer')) and 'CitadelHudHeroShop' in shop,
+      'Shop panel ids changed',
+      'One of CitadelHudHeroShop / #ShopNavigation / #ShopModListsContainer is gone from citadel_hud_hero_shop.xml, so the Notes tab is not added. Update shop_notes.js.', mod='sn')
+shop_css = get(P + 'styles/citadel_hud_hero_shop.css')
+check('sn_shop_tabs', 'warning', all(c in shop_css for c in ('showingFavorites', 'showingRecommendations', 'showingAllItems', 'showingWeapon', 'showingTech', 'showingArmor')),
+      'Shop tab classes changed',
+      'A showing* class is gone from citadel_hud_hero_shop.css: Notes may not close when a shop tab is clicked. Update SHOW in shop_notes.js.', mod='sn')
 
 failed = [c for c in checks if not c['ok']]
 report = {'build': build, 'failed': failed, 'checks': checks}
