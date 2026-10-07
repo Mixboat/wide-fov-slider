@@ -145,6 +145,28 @@ check('sn_shop_tabs', 'warning', all(c in shop_css for c in ('showingFavorites',
       'Shop tab classes changed',
       'A showing* class is gone from citadel_hud_hero_shop.css: Notes may not close when a shop tab is clicked. Update SHOW in shop_notes.js.', mod='sn')
 
+# Shop Notes: the hero pages come from a fixed table (built from heroes.vdata); a new, renamed or re-iconed hero needs a rebuild
+def sn_hero_table(vdata, names):
+    nm = {}
+    for k, v in re.findall(r'"(hero_[a-z0-9_]+):n"\s+"([^"]+)"', names): nm.setdefault(k, v)
+    blocks = re.split(r'\n\t(hero_[a-z0-9_]+) = \n', vdata); out = []
+    for i in range(1, len(blocks), 2):
+        k = blocks[i]; b = blocks[i + 1]
+        g = lambda f: (re.search(r'\n\t\t' + f + r' = (.+)', b) or [None, None])[1]
+        icon = g('m_strIconImageSmall')
+        if g('m_bDisabled') != 'false' or not icon or k in ('hero_base', 'hero_targetdummy'): continue
+        out.append('%s\t%s\t%s\t%s' % (k, nm.get(k, '?'), re.search(r'\{images\}/(.+)"', icon).group(1), g('m_bInDevelopment')))
+    return '\n'.join(sorted(out)) + '\n'
+try:
+    live_heroes = sn_hero_table(get('game/citadel/pak01_dir/scripts/heroes.vdata'), get('game/citadel/resource/localization/citadel_gc_hero_names/citadel_gc_hero_names_english.txt'))
+    exp_heroes = open(os.path.join(HERE, 'expected', 'heroes.tsv'), encoding='utf-8').read()
+    diff = sorted(set(live_heroes.splitlines()) ^ set(exp_heroes.splitlines()))
+    check('sn_heroes', 'warning', not diff, 'Hero list changed',
+          'heroes.vdata / hero names changed (new hero, rename, portrait path or dev flag): ' + '; '.join(diff)[:600] +
+          '. Regenerate HEROES in shop_notes.js (from heroes.vdata + citadel_gc_hero_names), rebuild, re-upload, then refresh watch/expected/heroes.tsv.', mod='sn')
+except Exception as e:
+    check('sn_heroes', 'warning', False, 'Hero list check failed', str(e), mod='sn')
+
 failed = [c for c in checks if not c['ok']]
 report = {'build': build, 'failed': failed, 'checks': checks}
 json.dump(report, open('report.json', 'w'), indent=2)
