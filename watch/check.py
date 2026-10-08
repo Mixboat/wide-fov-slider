@@ -167,6 +167,16 @@ try:
 except Exception as e:
     check('sn_heroes', 'warning', False, 'Hero list check failed', str(e), mod='sn')
 
+# Hide Investments v1.1: ships the stat list stylesheet with rules appended
+aps_css = get(P + 'styles/citadel_hud_active_player_stats.css')
+check('hinv_css_stats', 'warning', norm(aps_css) == norm(open(os.path.join(HERE, 'expected', 'citadel_hud_active_player_stats.css'), encoding='utf-8').read()),
+      'Valve changed citadel_hud_active_player_stats.css',
+      'Hide Investments overrides this stylesheet, so players miss whatever Valve changed (looks only, cannot crash). '
+      'Rebuild with build_hide_investments.py and re-upload; then refresh expected/citadel_hud_active_player_stats.css.', mod='hinv')
+check('hinv_css_stats_hooks', 'critical', all(x in aps_css for x in ('#StatList', '.column_stats', '.miniModifier', '#casterList', '.isPositive.shouldShow', '#WeaponColumn', '#SpiritColumn', '#VitalityColumn', '.secondaryStat')),
+      'Stat list stylesheet lost a rule Hide Investments rewrites',
+      'build_hide_investments.py will refuse to build until STATS_RULES is updated for the new css.', mod='hinv')
+
 failed = [c for c in checks if not c['ok']]
 report = {'build': build, 'failed': failed, 'checks': checks}
 json.dump(report, open('report.json', 'w'), indent=2)
