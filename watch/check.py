@@ -87,8 +87,8 @@ check('r_aspectratio_flags', 'warning', (not line) or line == 'r_aspectratio 0 (
       'r_aspectratio flags changed',
       'Now: `%s` (was `r_aspectratio 0 (developmentonly defensive)`). If it became a cheat convar, the slider stops working.' % line)
 
-# 5) Hide Investments: the two tiny layouts it ships with one script line added, and the badges it hides
-for name in ('team_status', 'hud_data_feed'):
+# 5) Hide Investments: the tiny layouts it ships with one script line added (v1.2 adds hud_screen_effects_muted as a spare hook), and the badges it hides
+for name in ('team_status', 'hud_data_feed', 'hud_screen_effects_muted'):
     live = norm(get(P + 'layout/%s.xml' % name))
     expected = norm(open(os.path.join(HERE, 'expected', name + '.xml'), encoding='utf-8').read())
     check('hinv_layout_' + name, 'critical', live == expected,
@@ -167,16 +167,46 @@ try:
 except Exception as e:
     check('sn_heroes', 'warning', False, 'Hero list check failed', str(e), mod='sn')
 
-# Hide Investments v1.1: ships the stat list stylesheet with rules appended
+# Hide Investments v1.2: no stylesheet override any more; everything below is done by the script at runtime, so a change only
+# switches that one feature off (nothing can go stale or crash). Each check names the piece that stops working.
 aps_css = get(P + 'styles/citadel_hud_active_player_stats.css')
-check('hinv_css_stats', 'warning', norm(aps_css) == norm(open(os.path.join(HERE, 'expected', 'citadel_hud_active_player_stats.css'), encoding='utf-8').read()),
-      'Valve changed citadel_hud_active_player_stats.css',
-      'Hide Investments overrides this stylesheet, so players miss whatever Valve changed (looks only, cannot crash). '
-      'Rebuild with build_hide_investments.py and re-upload; then refresh expected/citadel_hud_active_player_stats.css.', mod='hinv')
-check('hinv_css_stats_hooks', 'critical', all(x in aps_css for x in ('#StatList', '.column_stats', '.miniModifier', '#casterList', '.isPositive.shouldShow', '#WeaponColumn', '#SpiritColumn', '#VitalityColumn', '.secondaryStat')),
-      'Stat list stylesheet lost a rule Hide Investments rewrites',
-      'build_hide_investments.py will refuse to build until STATS_RULES is updated for the new css.', mod='hinv')
-
+check('hinv_statlist', 'warning', all(x in aps_css for x in ('#StatList', '.column_stats', '.miniModifier', '#casterList', '.isPositive', '.shouldShow', '.secondaryStat', '.isBaseValue', '.isZero'))
+      and all(('id="%s"' % i) in st for i in ('StatList', 'WeaponColumn', 'SpiritColumn', 'VitalityColumn')),
+      'Stat list names changed',
+      'The one-column stat list (statLook in hide_investments.js) styles #StatList / .column_stats / .miniModifier rows by the classes '
+      'shouldShow, isPositive, secondaryStat, isBaseValue, isZero and the #WeaponColumn / #SpiritColumn / #VitalityColumn ids. One is gone, '
+      'so that part of the look stops applying. Update statLook.', mod='hinv')
+check('hinv_bars_row', 'warning', all(('id="%s"' % i) in hud for i in ('LowerLeft', 'ModsContainer', 'CitadelHudQuickbuy')),
+      'Item row ids changed (old bars)',
+      'The old investment bars go first in #LowerLeft > #ModsContainer and keep #CitadelHudQuickbuy clear. One id is gone from hud.xml, '
+      'so the bars (Old bars mode) do not appear or quick buy is not moved. Update restoreBars / quickbuyShift.', mod='hinv')
+ibg = get(P + 'layout/citadel_hud_item_bar_graph.xml'); sibg = get(P + 'layout/citadel_hud_single_item_bar_graph.xml')
+cs = get('game/citadel/bin/win64/client_strings.txt')
+check('hinv_bars_panel', 'critical', 'CitadelHudItemBarGraph' in ibg and 'CitadelHudSingleItemBarGraph' in cs and 'CenterProgressBar' in cs,
+      'Old investment bar panel removed',
+      'Old bars mode re-creates Valve\'s CitadelHudItemBarGraph (still in the game since the 2026-09-29 rework). Its layout or code is gone, '
+      'so the bars and their hover preview no longer appear. The other modes are unaffected; say so on the mod page.', mod='hinv')
+check('hinv_bars_parts', 'warning', all(x in (ibg + sibg + cs) for x in ('WeaponBarContainer', 'TechBarContainer', 'ArmorBarContainer', 'BarPercentContainer')),
+      'Old bar part names changed',
+      'fixBars / wireHover find the bars as #WeaponBarContainer / #TechBarContainer / #ArmorBarContainer and hide #BarPercentContainer '
+      '(tier dots). A name changed: hover windows or the dot hiding stop working. Update BAR_SLOTS / fixBars.', mod='hinv')
+check('hinv_hover_events', 'warning', 'CitadelShowStatsPanelTooltip' in cs and 'CitadelHideStatsPanelTooltip' in cs,
+      'Stats panel tooltip events renamed',
+      'Hovering an old bar opens the investment window with CitadelShowStatsPanelTooltip / CitadelHideStatsPanelTooltip. '
+      'They are gone, so hovering shows nothing until the first purchase. Update wireHover.', mod='hinv')
+qcss = get(P + 'styles/hud_quickbuy.css')
+check('hinv_quickbuy', 'warning', '.HudQuickbuyElement' in qcss and '#KeyboardHints' in qcss,
+      'Quick buy element names changed',
+      'With the old bars on, the quick buy item (.HudQuickbuyElement) and its key hint (#KeyboardHints) are moved right by the bars\' '
+      'width (measured, no fixed numbers). A name changed, so they may overlap the item slots. Update quickbuyTargets.', mod='hinv')
+check('hinv_settings', 'warning', 'id="citadel_settings_shop"' in ps and 'CitadelSettingsEnum' in ps and 'RadioButton' in ps,
+      'Shop settings section changed',
+      'The "Investment display" row goes at the end of Settings > Game > Shop (#citadel_settings_shop) as a CitadelSettingsEnum with '
+      'RadioButtons. Something is gone, so the row does not appear (the saved mode still applies). Update injectRow.', mod='hinv')
+check('hinv_store', 'critical', re.search(r'(?m)^\s*joy_axisy_deadzone\s.*per_user', cv),
+      'Saved mode setting changed',
+      'The display mode is saved in joy_axisy_deadzone (unused legacy joystick setting, per user). It is gone or no longer per user, '
+      'so the choice resets every launch. Pick another unused per-user setting in hide_investments.js (STORE).', mod='hinv')
 failed = [c for c in checks if not c['ok']]
 report = {'build': build, 'failed': failed, 'checks': checks}
 json.dump(report, open('report.json', 'w'), indent=2)
