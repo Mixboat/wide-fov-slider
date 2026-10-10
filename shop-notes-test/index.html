@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
+<title>SN_INIT</title>
+<style>
+html, body { margin: 0; height: 100%; background: #ffffff; }
+textarea { box-sizing: border-box; width: 100%; height: 100%; border: 0; padding: 12px 16px; resize: none; outline: none;
+  background: #ffffff; color: #111111; font: 18px/1.4 Arial, sans-serif; }
+::selection, textarea::selection { background: #3390ff; color: #ffffff; }
+textarea::-webkit-scrollbar { width: 14px; }
+textarea::-webkit-scrollbar-track { background: #eeeeee; }
+textarea::-webkit-scrollbar-thumb { background: #9a9a9a; border-radius: 7px; border: 3px solid #eeeeee; }
+</style>
+</head>
+<body>
+<!-- Shop Notes (Deadlock mod) storage.
+     The mod loads this page in an in-game browser panel and keeps the notes in this page's localStorage, on this PC only.
+     Storage mode: requests arrive in the URL fragment as JSON, answers go out through the page title. Nothing is sent anywhere.
+     Editor mode (?ui=1#<key>): a plain text box that saves to the same storage while you type. -->
+<script>
+(function () {
+    'use strict';
+    if (window.top !== window.self) return;
+    var PREFIX = 'shop_notes.';
+    var KEY = /^[a-z0-9_]{1,40}$/;
+    var CHUNK = 1500, MAX = 50000, BIG = 2000000;
+    function get(k) { try { return localStorage.getItem(PREFIX + k) || ''; } catch (e) { return ''; } }
+    function reply(n, obj) { document.title = 'SN:' + n + ':' + JSON.stringify(obj); }
+
+    if (/[?&]ui=1/.test(location.search)) {
+        var key = location.hash.slice(1);
+        if (!KEY.test(key)) key = 'general';
+        var ta = document.createElement('textarea');
+        ta.spellcheck = false;
+        ta.value = get(key);
+        document.body.appendChild(ta);
+        // every change is stored right away
+        function save() { try { localStorage.setItem(PREFIX + key, ta.value.slice(0, MAX)); } catch (e) {} }
+        ta.addEventListener('input', save);
+        ta.addEventListener('blur', save);
+        // tell the mod whether this page has the keyboard; 'want' = clicked while it does not (after an alt-tab)
+        var seq = 0;
+        function report(st) { document.title = 'SN_UI:' + key + ':' + st + ':' + (++seq); }
+        window.addEventListener('focus', function () { ta.focus(); report('f1'); });
+        window.addEventListener('blur', function () { report('f0'); });
+        document.addEventListener('mousedown', function () { if (!document.hasFocus()) report('want'); }, true);
+        ta.focus();
+        report(document.hasFocus() ? 'f1' : 'f0');
+        return;
+    }
+
+    // storage mode. get: {n, get:key, off} -> {key, len, off, s}
+    // set: {n, set:key, text, part, parts} -> {key, part, len}; a long text comes in parts and is stored when the last part arrives
+    var pending = {};
+    function handle() {
+        var h = location.hash.slice(1);
+        if (!h) { reply(0, { ready: 1 }); return; }
+        var m;
+        try { m = JSON.parse(decodeURIComponent(h)); } catch (e) { return; }
+        if (!m || typeof m !== 'object') return;
+        var n = String(Math.floor(Number(m.n) || 0));
+        try {
+            if (typeof m.set === 'string' && KEY.test(m.set) && typeof m.text === 'string') {
+                var parts = Math.max(1, Math.min(2000, Math.floor(Number(m.parts) || 1))), part = Math.floor(Number(m.part) || 0);
+                if (parts === 1) localStorage.setItem(PREFIX + m.set, m.text.slice(0, m.set === 'backup_out' ? BIG : MAX));
+                else {
+                    if (part === 0) pending[m.set] = [];
+                    (pending[m.set] = pending[m.set] || [])[part] = m.text;
+                    if (part === parts - 1) { localStorage.setItem(PREFIX + m.set, pending[m.set].join('').slice(0, m.set === 'backup_out' ? BIG : MAX)); delete pending[m.set]; }
+                }
+                reply(n, { key: m.set, part: part, len: get(m.set).length });
+            } else if (typeof m.download === 'string' && KEY.test(m.download)) {
+                // backup: hand the stored text to the browser as a .txt download (lands in the Downloads folder)
+                var body = get(m.download), name = String(m.name || 'Shop Notes backup.txt').replace(/[^\w .()-]/g, '_').slice(0, 80);
+                var a = document.createElement('a');
+                a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(body.split(String.fromCharCode(10)).join(String.fromCharCode(13, 10)));
+                a.download = name; document.body.appendChild(a); a.click(); a.remove();
+                reply(n, { download: name, len: body.length });
+            } else if (typeof m.get === 'string' && KEY.test(m.get)) {
+                var s = get(m.get), off = Math.max(0, Math.floor(Number(m.off) || 0));
+                reply(n, { key: m.get, len: s.length, off: off, s: s.slice(off, off + CHUNK) });
+            }
+        } catch (e) { reply(n, { error: String(e && e.message || e) }); }
+    }
+    window.addEventListener('hashchange', handle);
+    handle();
+})();
+</script>
+</body>
+</html>
