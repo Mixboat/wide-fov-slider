@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>CT:start</title>
+<style>html,body{margin:0;background:#2a6;color:#fff;font:16px sans-serif}#img{max-width:100%;display:block}</style></head>
+<body><div id="o">clip test page loaded</div><div id="ed" contenteditable="true" style="min-height:20px;background:#184"></div><img id="img">
+<script>
+var o=document.getElementById('o'),n=0;
+function R(s){n++;document.title='CT:'+n+':'+s;o.textContent+=' | '+s;}
+R('loaded secure='+window.isSecureContext+' clip='+(!!navigator.clipboard)+' read='+(!!(navigator.clipboard&&navigator.clipboard.read)));
+function show(blob,how){var u=URL.createObjectURL(blob),im=document.getElementById('img');im.onload=function(){R(how+' image '+im.naturalWidth+'x'+im.naturalHeight+' '+blob.size+'b');};im.src=u;}
+document.addEventListener('paste',function(e){var it=e.clipboardData&&e.clipboardData.items,f=false;if(it)for(var i=0;i<it.length;i++){if(it[i].type.indexOf('image')===0){f=true;show(it[i].getAsFile(),'paste-event');}}R('paste event items='+(it?it.length:0)+' image='+f);});
+function tryRead(){if(!(navigator.clipboard&&navigator.clipboard.read)){R('no clipboard.read');return;}
+ navigator.clipboard.read().then(function(items){var f=false;items.forEach(function(ci){ci.types.forEach(function(t){if(t.indexOf('image')===0){f=true;ci.getType(t).then(function(b){show(b,'clipboard.read');});}});});R('read ok items='+items.length+' image='+f);},function(err){R('read denied '+(err&&err.name)+' '+(err&&err.message));});}
+function tryExec(){var ed=document.getElementById('ed');ed.focus();var ok=false;try{ok=document.execCommand('paste');}catch(e){R('exec err '+e);}R('execCommand paste='+ok);}
+window.addEventListener('hashchange',function(){var h=location.hash.slice(1);if(h.indexOf('read')===0)tryRead();if(h.indexOf('exec')===0)tryExec();});
+try{navigator.permissions&&navigator.permissions.query({name:'clipboard-read'}).then(function(p){R('perm '+p.state);},function(e){R('perm err '+e.name);});}catch(e){R('perm throw');}
+setTimeout(tryRead,1500);setTimeout(tryExec,3000);
+</script></body></html>
