@@ -19,6 +19,7 @@ html.paste, html.paste body { background: #1b1d22; overflow: hidden; cursor: def
 html.paste .box { box-sizing: border-box; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
   border: 2px dashed #4a5060; border-radius: 6px; color: #e2e2e2; font: 18px Arial, sans-serif; text-align: center; padding: 8px; }
 html.paste .box small { color: #9a9a9a; font-size: 13px; margin-top: 6px; }
+html.paste .box .browse { margin-top: 12px; padding: 6px 18px; font-size: 15px; background: #2b2e36; color: #e2e2e2; border: 2px solid #555; border-radius: 5px; cursor: pointer; }
 html.paste .box.busy { border-color: #7a8cff; }
 </style>
 </head>
@@ -93,6 +94,14 @@ html.paste .box.busy { border-color: #7a8cff; }
         var hint = document.createElement('small');
         hint.textContent = 'Click here first if nothing happens. Esc cancels.';
         box.appendChild(hint);
+        var pick = document.createElement('input');
+        pick.type = 'file'; pick.accept = 'image/*'; pick.setAttribute && pick.setAttribute('hidden', '');
+        var browse = document.createElement('button');
+        browse.textContent = 'Browse...';
+        browse.className = 'browse';
+        browse.addEventListener && browse.addEventListener('click', function (e) { e.stopPropagation(); say({ st: 'wait', why: 'browse' }); pick.click(); });
+        pick.addEventListener && pick.addEventListener('change', function () { var f = pick.files && pick.files[0]; if (!f) { say({ st: 'wait', why: 'browse-none' }); return; } if (!/^image\//.test(f.type)) { say({ st: 'error', err: 'not a picture file' }); return; } useBlob(f); });
+        box.appendChild(browse); box.appendChild(pick);
         document.body.appendChild(box);
         if (!NS.test(ns) || !IMG_ID.test(id)) { say({ st: 'error', err: 'bad paste request' }); return; }
         function finish(o) { if (done) return; done = true; say(o); }
