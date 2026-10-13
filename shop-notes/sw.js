@@ -1,8 +1,5 @@
-// Shop Notes storage page: offline copy. After the first visit the page loads from this cache when the site cannot be
-// reached (offline, GitHub Pages down). Online, the newest page is fetched first and the cache is refreshed.
-// Only this folder's page is handled; notes themselves live in the page's localStorage, never in this cache.
 'use strict';
-var CACHE = 'shop-notes-page-v2';
+var CACHE = 'shop-notes-page-v3';
 var PAGE = new URL('./index.html', self.location).href;
 var ROOT = new URL('./', self.location).href;
 self.addEventListener('install', function (e) {
@@ -23,7 +20,7 @@ self.addEventListener('fetch', function (e) {
             if (done) return; done = true;
             caches.match(PAGE).then(function (r) { return r || caches.match(ROOT); }).then(function (r) { resolve(r || Response.error()); });
         }
-        var timer = setTimeout(fromCache, 4000);   // a host that hangs counts as offline
+        var timer = setTimeout(fromCache, 4000);
         fetch(req).then(function (r) {
             clearTimeout(timer);
             if (r && r.ok) {
