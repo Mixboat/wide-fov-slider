@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; worker-src 'self'">
 <title>SN_INIT</title>
 <style>
 html, body { margin: 0; height: 100%; background: #ffffff; }
@@ -18,14 +18,23 @@ textarea::-webkit-scrollbar-thumb { background: #9a9a9a; border-radius: 7px; bor
 <!-- Shop Notes (Deadlock mod) storage.
      The mod loads this page in an in-game browser panel and keeps the notes in this page's localStorage, on this PC only.
      Storage mode: requests arrive in the URL fragment as JSON, answers go out through the page title. Nothing is sent anywhere.
-     Editor mode (?ui=1#<key>): a plain text box that saves to the same storage while you type. -->
+     Editor mode (?ui=1#<key>): a plain text box that saves to the same storage while you type.
+     v2 (fully compatible with v1: same keys, same requests and answers): the ready answer also says {v, caps, max};
+     del:<key> removes snapshot keys only (snap_<yyyymmdd>_<n>_<part>); a stored text may be up to MAX chars (v1: 50000);
+     a service worker (sw.js) keeps a copy of this page so it also loads offline after the first visit. -->
 <script>
 (function () {
     'use strict';
     if (window.top !== window.self) return;
     var PREFIX = 'shop_notes.';
     var KEY = /^[a-z0-9_]{1,40}$/;
-    var CHUNK = 1500, MAX = 50000;
+    var CHUNK = 1500, MAX = 1000000, VERSION = 2;
+    var SNAP_KEY = /^snap_[0-9]{8}_[0-9]+_[0-9]+$/;
+    // offline copy of this page (sw.js next to it); a failure here changes nothing else
+    try {
+        if ('serviceWorker' in navigator && location.protocol === 'https:')
+            navigator.serviceWorker.register('sw.js', { scope: './' }).catch(function () {});
+    } catch (e) {}
     function get(k) { try { return localStorage.getItem(PREFIX + k) || ''; } catch (e) { return ''; } }
     function reply(n, obj) { document.title = 'SN:' + n + ':' + JSON.stringify(obj); }
 
@@ -56,7 +65,7 @@ textarea::-webkit-scrollbar-thumb { background: #9a9a9a; border-radius: 7px; bor
     var pending = {};
     function handle() {
         var h = location.hash.slice(1);
-        if (!h) { reply(0, { ready: 1 }); return; }
+        if (!h) { reply(0, { ready: 1, v: VERSION, caps: ['del', 'max', 'sw'], max: MAX }); return; }
         var m;
         try { m = JSON.parse(decodeURIComponent(h)); } catch (e) { return; }
         if (!m || typeof m !== 'object') return;
@@ -71,6 +80,10 @@ textarea::-webkit-scrollbar-thumb { background: #9a9a9a; border-radius: 7px; bor
                     if (part === parts - 1) { localStorage.setItem(PREFIX + m.set, pending[m.set].join('').slice(0, MAX)); delete pending[m.set]; }
                 }
                 reply(n, { key: m.set, part: part, len: get(m.set).length });
+            } else if (typeof m.del === 'string') {
+                // only snapshot data can be removed; notes, page lists and settings are never deleted
+                if (!SNAP_KEY.test(m.del)) reply(n, { error: 'not removable' });
+                else { localStorage.removeItem(PREFIX + m.del); reply(n, { key: m.del, del: 1, len: 0 }); }
             } else if (typeof m.get === 'string' && KEY.test(m.get)) {
                 var s = get(m.get), off = Math.max(0, Math.floor(Number(m.off) || 0));
                 reply(n, { key: m.get, len: s.length, off: off, s: s.slice(off, off + CHUNK) });
