@@ -23,20 +23,6 @@ html.paste .box.busy { border-color: #7a8cff; }
 </style>
 </head>
 <body>
-<!-- Shop Notes (Deadlock mod) storage.
-     The mod loads this page in an in-game browser panel and keeps the notes in this page's localStorage, on this PC only.
-     Storage mode: requests arrive in the URL fragment as JSON, answers go out through the page title. Nothing is sent anywhere.
-     Editor mode (?ui=1#<key>): a plain text box that saves to the same storage while you type.
-     v2 (fully compatible with v1: same keys, same requests and answers): the ready answer also says {v, caps, max};
-     del:<key> removes snapshot keys only (snap_<yyyymmdd>_<n>_<part>); a stored text may be up to MAX chars (v1: 50000);
-     a service worker (sw.js) keeps a copy of this page so it also loads offline after the first visit.
-     v3 (fully compatible with v1 and v2): screenshots in notes. caps also lists "img".
-       Paste mode (?paste=1&ns=<account prefix>&id=<image id>): a catcher for Ctrl+V. The picture is made smaller (at most
-       1280 px wide), stored as JPEG or WebP (the smaller one) under <ns>img_<id> plus <ns>img_<id>_meta {w,h,bytes}.
-       Answers in the title: SNP:<seq>:{st: wait | ok | notimage | full | denied | error | esc, ...}.
-       View mode (?view=<ns>img_<id>): shows that one picture filling the panel.
-       gc request {n, gc:<ns>, keep:[ids]}: removes <ns>img_<id> pictures that no stored text of any page, previous version or
-       snapshot (any account) mentions, that are not in keep and are older than 10 minutes. Only img_ keys are ever removed. -->
 <script>
 (function () {
     'use strict';
@@ -48,7 +34,6 @@ html.paste .box.busy { border-color: #7a8cff; }
     var NS = /^(a[0-9a-z]{1,7}_)?$/, IMG_ID = /^[0-9a-z]{4,16}$/;
     var IMG_KEY = /^(a[0-9a-z]{1,7}_)?img_([0-9a-z]{4,16})(_meta)?$/;
     var IMG_W = 1280, IMG_BIG = 700000, RESERVE = 200000, GRACE_MS = 600000;
-    // offline copy of this page (sw.js next to it); a failure here changes nothing else
     try {
         if ('serviceWorker' in navigator && location.protocol === 'https:')
             navigator.serviceWorker.register('sw.js', { scope: './' }).catch(function () {});
@@ -56,7 +41,6 @@ html.paste .box.busy { border-color: #7a8cff; }
     function get(k) { try { return localStorage.getItem(PREFIX + k) || ''; } catch (e) { return ''; } }
     function reply(n, obj) { document.title = 'SN:' + n + ':' + JSON.stringify(obj); }
     function param(name) { var m = new RegExp('[?&]' + name + '=([^&#]*)').exec(location.search); return m ? decodeURIComponent(m[1]) : null; }
-
     if (/[?&]ui=1/.test(location.search)) {
         var key = location.hash.slice(1);
         if (!KEY.test(key)) key = 'general';
@@ -64,11 +48,9 @@ html.paste .box.busy { border-color: #7a8cff; }
         ta.spellcheck = false;
         ta.value = get(key);
         document.body.appendChild(ta);
-        // every change is stored right away
         function save() { try { localStorage.setItem(PREFIX + key, ta.value.slice(0, MAX)); } catch (e) {} }
         ta.addEventListener('input', save);
         ta.addEventListener('blur', save);
-        // tell the mod whether this page has the keyboard; 'want' = clicked while it does not (after an alt-tab)
         var seq = 0;
         function report(st) { document.title = 'SN_UI:' + key + ':' + st + ':' + (++seq); }
         window.addEventListener('focus', function () { ta.focus(); report('f1'); });
@@ -78,15 +60,13 @@ html.paste .box.busy { border-color: #7a8cff; }
         report(document.hasFocus() ? 'f1' : 'f0');
         return;
     }
-
-    // ---- view mode: one stored picture, nothing else
     var viewKey = param('view');
     if (viewKey !== null) {
         document.documentElement.className = 'view';
         var vm = IMG_KEY.exec(viewKey), data = '';
         if (vm && !vm[3]) {
             data = get(viewKey);
-            if (!data && vm[1]) data = get('img_' + vm[2]);   // a picture pasted while the shared notes were in use
+            if (!data && vm[1]) data = get('img_' + vm[2]);
         }
         if (/^data:image\/(jpeg|webp|png);base64,/.test(data)) {
             var im = document.createElement('img');
@@ -103,8 +83,6 @@ html.paste .box.busy { border-color: #7a8cff; }
         }
         return;
     }
-
-    // ---- paste mode: catch a picture from the clipboard
     if (/[?&]paste=1/.test(location.search)) {
         document.documentElement.className = 'paste';
         var ns = param('ns') || '', id = param('id') || '', pseq = 0, done = false, busy = false;
@@ -152,7 +130,6 @@ html.paste .box.busy { border-color: #7a8cff; }
                 try { localStorage.removeItem(k); localStorage.removeItem(mk); } catch (e2) {}
                 return 'full';
             }
-            // the notes must still have room to be saved: keep RESERVE chars free, else give the picture back
             try { localStorage.setItem(PREFIX + 'imgprobe_tmp', new Array(RESERVE + 1).join('x')); localStorage.removeItem(PREFIX + 'imgprobe_tmp'); }
             catch (e) {
                 try { localStorage.removeItem(PREFIX + 'imgprobe_tmp'); localStorage.removeItem(k); localStorage.removeItem(mk); } catch (e2) {}
@@ -177,7 +154,6 @@ html.paste .box.busy { border-color: #7a8cff; }
             img.onerror = function () { busy = false; URL.revokeObjectURL(url); finish({ st: 'error', err: 'picture could not be read' }); };
             img.src = url;
         }
-        // async clipboard API (works only when the browser lets this page read the clipboard)
         function tryRead(why) {
             if (done || busy) return;
             if (!navigator.clipboard || !navigator.clipboard.read) { say({ st: 'denied', err: 'no clipboard.read', why: why }); return; }
@@ -211,8 +187,6 @@ html.paste .box.busy { border-color: #7a8cff; }
         tryRead('load');
         return;
     }
-
-    // ---- housekeeping: which pictures does any stored text mention (pages, previous versions, snapshots, every account)
     function referenced() {
         var refs = {}, snaps = {}, k, i, re = /\[\$img:([0-9a-z]+)/g, mm;
         function scan(s) { re.lastIndex = 0; while ((mm = re.exec(s))) refs[mm[1]] = 1; }
@@ -222,7 +196,7 @@ html.paste .box.busy { border-color: #7a8cff; }
             k = k.slice(PREFIX.length);
             if (IMG_KEY.test(k)) continue;
             var sm = /^((?:a[0-9a-z]{1,7}_)?snap_[0-9]{8}_[0-9]+)_([0-9]+)$/.exec(k);
-            if (sm) (snaps[sm[1]] = snaps[sm[1]] || [])[+sm[2]] = get(k);   // parts joined in order: a mention may span two parts
+            if (sm) (snaps[sm[1]] = snaps[sm[1]] || [])[+sm[2]] = get(k);
             else scan(get(k));
         }
         for (k in snaps) scan(snaps[k].join(''));
@@ -239,16 +213,13 @@ html.paste .box.busy { border-color: #7a8cff; }
             if (!im[3]) total += get(key).length;
             if ((im[1] || '') !== ns) return;
             var id = im[2], born = parseInt(id.slice(0, 8), 36);
-            var young = !(born > 1e12) || now - born < GRACE_MS;   // an id that is no timestamp counts as young (kept)
+            var young = !(born > 1e12) || now - born < GRACE_MS;
             if (refs[id] || keep[id] || young) { if (!im[3]) kept++; return; }
             localStorage.removeItem(PREFIX + key);
             if (!im[3]) drop.push(id);
         });
         return { gc: ns, removed: drop, kept: kept, bytes: total };
     }
-
-    // storage mode. get: {n, get:key, off} -> {key, len, off, s}
-    // set: {n, set:key, text, part, parts} -> {key, part, len}; a long text comes in parts and is stored when the last part arrives
     var pending = {};
     function handle() {
         var h = location.hash.slice(1);
@@ -268,11 +239,9 @@ html.paste .box.busy { border-color: #7a8cff; }
                 }
                 reply(n, { key: m.set, part: part, len: get(m.set).length });
             } else if (typeof m.del === 'string') {
-                // only snapshot data can be removed; notes, page lists and settings are never deleted
                 if (!SNAP_KEY.test(m.del)) reply(n, { error: 'not removable' });
                 else { localStorage.removeItem(PREFIX + m.del); reply(n, { key: m.del, del: 1, len: 0 }); }
             } else if (typeof m.gc === 'string') {
-                // unused pictures only (img_ keys of that account prefix); notes keys are never removed
                 if (!NS.test(m.gc)) reply(n, { error: 'bad prefix' });
                 else reply(n, gc(m));
             } else if (typeof m.get === 'string' && KEY.test(m.get)) {
