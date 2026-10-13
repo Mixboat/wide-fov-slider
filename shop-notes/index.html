@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; worker-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; worker-src 'self'; img-src data: blob:">
 <title>SN_INIT</title>
 <style>
 html, body { margin: 0; height: 100%; background: #ffffff; }
@@ -12,6 +12,14 @@ textarea { box-sizing: border-box; width: 100%; height: 100%; border: 0; padding
 textarea::-webkit-scrollbar { width: 14px; }
 textarea::-webkit-scrollbar-track { background: #eeeeee; }
 textarea::-webkit-scrollbar-thumb { background: #9a9a9a; border-radius: 7px; border: 3px solid #eeeeee; }
+html.view, html.view body { background: transparent; overflow: hidden; }
+html.view img { display: block; width: 100%; height: 100%; object-fit: contain; }
+html.view .miss { color: #9a9a9a; font: 14px Arial, sans-serif; text-align: center; padding-top: 12px; }
+html.paste, html.paste body { background: #1b1d22; overflow: hidden; cursor: default; }
+html.paste .box { box-sizing: border-box; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 2px dashed #4a5060; border-radius: 6px; color: #e2e2e2; font: 18px Arial, sans-serif; text-align: center; padding: 8px; }
+html.paste .box small { color: #9a9a9a; font-size: 13px; margin-top: 6px; }
+html.paste .box.busy { border-color: #7a8cff; }
 </style>
 </head>
 <body>
@@ -21,15 +29,25 @@ textarea::-webkit-scrollbar-thumb { background: #9a9a9a; border-radius: 7px; bor
      Editor mode (?ui=1#<key>): a plain text box that saves to the same storage while you type.
      v2 (fully compatible with v1: same keys, same requests and answers): the ready answer also says {v, caps, max};
      del:<key> removes snapshot keys only (snap_<yyyymmdd>_<n>_<part>); a stored text may be up to MAX chars (v1: 50000);
-     a service worker (sw.js) keeps a copy of this page so it also loads offline after the first visit. -->
+     a service worker (sw.js) keeps a copy of this page so it also loads offline after the first visit.
+     v3 (fully compatible with v1 and v2): screenshots in notes. caps also lists "img".
+       Paste mode (?paste=1&ns=<account prefix>&id=<image id>): a catcher for Ctrl+V. The picture is made smaller (at most
+       1280 px wide), stored as JPEG or WebP (the smaller one) under <ns>img_<id> plus <ns>img_<id>_meta {w,h,bytes}.
+       Answers in the title: SNP:<seq>:{st: wait | ok | notimage | full | denied | error | esc, ...}.
+       View mode (?view=<ns>img_<id>): shows that one picture filling the panel.
+       gc request {n, gc:<ns>, keep:[ids]}: removes <ns>img_<id> pictures that no stored text of any page, previous version or
+       snapshot (any account) mentions, that are not in keep and are older than 10 minutes. Only img_ keys are ever removed. -->
 <script>
 (function () {
     'use strict';
     if (window.top !== window.self) return;
     var PREFIX = 'shop_notes.';
     var KEY = /^[a-z0-9_]{1,40}$/;
-    var CHUNK = 1500, MAX = 1000000, VERSION = 2;
+    var CHUNK = 1500, MAX = 1000000, VERSION = 3;
     var SNAP_KEY = /^snap_[0-9]{8}_[0-9]+_[0-9]+$/;
+    var NS = /^(a[0-9a-z]{1,7}_)?$/, IMG_ID = /^[0-9a-z]{4,16}$/;
+    var IMG_KEY = /^(a[0-9a-z]{1,7}_)?img_([0-9a-z]{4,16})(_meta)?$/;
+    var IMG_W = 1280, IMG_BIG = 700000, RESERVE = 200000, GRACE_MS = 600000;
     // offline copy of this page (sw.js next to it); a failure here changes nothing else
     try {
         if ('serviceWorker' in navigator && location.protocol === 'https:')
@@ -37,6 +55,7 @@ textarea::-webkit-scrollbar-thumb { background: #9a9a9a; border-radius: 7px; bor
     } catch (e) {}
     function get(k) { try { return localStorage.getItem(PREFIX + k) || ''; } catch (e) { return ''; } }
     function reply(n, obj) { document.title = 'SN:' + n + ':' + JSON.stringify(obj); }
+    function param(name) { var m = new RegExp('[?&]' + name + '=([^&#]*)').exec(location.search); return m ? decodeURIComponent(m[1]) : null; }
 
     if (/[?&]ui=1/.test(location.search)) {
         var key = location.hash.slice(1);
@@ -60,12 +79,180 @@ textarea::-webkit-scrollbar-thumb { background: #9a9a9a; border-radius: 7px; bor
         return;
     }
 
+    // ---- view mode: one stored picture, nothing else
+    var viewKey = param('view');
+    if (viewKey !== null) {
+        document.documentElement.className = 'view';
+        var vm = IMG_KEY.exec(viewKey), data = '';
+        if (vm && !vm[3]) {
+            data = get(viewKey);
+            if (!data && vm[1]) data = get('img_' + vm[2]);   // a picture pasted while the shared notes were in use
+        }
+        if (/^data:image\/(jpeg|webp|png);base64,/.test(data)) {
+            var im = document.createElement('img');
+            im.alt = '';
+            im.src = data;
+            document.body.appendChild(im);
+            document.title = 'SNV:ok';
+        } else {
+            var ms = document.createElement('div');
+            ms.className = 'miss';
+            ms.textContent = 'Screenshot not found on this PC';
+            document.body.appendChild(ms);
+            document.title = 'SNV:missing';
+        }
+        return;
+    }
+
+    // ---- paste mode: catch a picture from the clipboard
+    if (/[?&]paste=1/.test(location.search)) {
+        document.documentElement.className = 'paste';
+        var ns = param('ns') || '', id = param('id') || '', pseq = 0, done = false, busy = false;
+        function say(o) { document.title = 'SNP:' + (++pseq) + ':' + JSON.stringify(o); }
+        var box = document.createElement('div');
+        box.className = 'box';
+        box.appendChild(document.createTextNode('Press Ctrl+V to paste a screenshot'));
+        var hint = document.createElement('small');
+        hint.textContent = 'Click here first if nothing happens. Esc cancels.';
+        box.appendChild(hint);
+        document.body.appendChild(box);
+        if (!NS.test(ns) || !IMG_ID.test(id)) { say({ st: 'error', err: 'bad paste request' }); return; }
+        function finish(o) { if (done) return; done = true; say(o); }
+        function sendText(t) {
+            t = String(t || '');
+            var parts = Math.max(1, Math.ceil(t.length / CHUNK));
+            if (parts > 40) { t = t.slice(0, 40 * CHUNK); parts = 40; }
+            done = true;
+            for (var p = 0; p < parts; p++) say({ st: 'notimage', part: p, parts: parts, s: t.slice(p * CHUNK, (p + 1) * CHUNK) });
+        }
+        function encode(img) {
+            var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+            if (!w || !h) return null;
+            var tw = Math.min(IMG_W, w), th = Math.max(1, Math.round(h * tw / w));
+            var c = document.createElement('canvas');
+            c.width = tw; c.height = th;
+            var g = c.getContext('2d');
+            g.fillStyle = '#000000'; g.fillRect(0, 0, tw, th);
+            g.drawImage(img, 0, 0, tw, th);
+            function best(q) {
+                var a = c.toDataURL('image/jpeg', q), b = '';
+                try { b = c.toDataURL('image/webp', q); } catch (e) {}
+                return b.indexOf('data:image/webp') === 0 && b.length < a.length ? b : a;
+            }
+            var out = best(0.8);
+            if (out.length > IMG_BIG) out = best(0.6);
+            return { data: out, w: tw, h: th };
+        }
+        function store(enc) {
+            var k = PREFIX + ns + 'img_' + id, mk = k + '_meta';
+            try {
+                localStorage.setItem(k, enc.data);
+                localStorage.setItem(mk, JSON.stringify({ w: enc.w, h: enc.h, bytes: enc.data.length }));
+            } catch (e) {
+                try { localStorage.removeItem(k); localStorage.removeItem(mk); } catch (e2) {}
+                return 'full';
+            }
+            // the notes must still have room to be saved: keep RESERVE chars free, else give the picture back
+            try { localStorage.setItem(PREFIX + 'imgprobe_tmp', new Array(RESERVE + 1).join('x')); localStorage.removeItem(PREFIX + 'imgprobe_tmp'); }
+            catch (e) {
+                try { localStorage.removeItem(PREFIX + 'imgprobe_tmp'); localStorage.removeItem(k); localStorage.removeItem(mk); } catch (e2) {}
+                return 'full';
+            }
+            return '';
+        }
+        function useBlob(blob) {
+            if (done || busy) return;
+            busy = true; box.className = 'box busy';
+            var url = URL.createObjectURL(blob), img = new Image();
+            img.onload = function () {
+                busy = false;
+                var enc = null;
+                try { enc = encode(img); } catch (e) { URL.revokeObjectURL(url); finish({ st: 'error', err: String(e && e.message || e) }); return; }
+                URL.revokeObjectURL(url);
+                if (!enc) { finish({ st: 'error', err: 'empty picture' }); return; }
+                var r = store(enc);
+                if (r) { finish({ st: 'full' }); return; }
+                finish({ st: 'ok', id: id, w: enc.w, h: enc.h, bytes: enc.data.length, type: enc.data.slice(5, enc.data.indexOf(';')) });
+            };
+            img.onerror = function () { busy = false; URL.revokeObjectURL(url); finish({ st: 'error', err: 'picture could not be read' }); };
+            img.src = url;
+        }
+        // async clipboard API (works only when the browser lets this page read the clipboard)
+        function tryRead(why) {
+            if (done || busy) return;
+            if (!navigator.clipboard || !navigator.clipboard.read) { say({ st: 'denied', err: 'no clipboard.read', why: why }); return; }
+            navigator.clipboard.read().then(function (items) {
+                if (done) return;
+                for (var i = 0; i < items.length; i++) {
+                    var types = items[i].types || [];
+                    for (var j = 0; j < types.length; j++) if (/^image\//.test(types[j])) {
+                        items[i].getType(types[j]).then(useBlob, function (e) { say({ st: 'denied', err: String(e && e.name || e), why: why }); });
+                        return;
+                    }
+                }
+                for (var a = 0; a < items.length; a++) if ((items[a].types || []).indexOf('text/plain') >= 0) {
+                    items[a].getType('text/plain').then(function (b) { return b.text(); }).then(sendText, function () { sendText(''); });
+                    return;
+                }
+                sendText('');
+            }, function (e) { say({ st: 'denied', err: String(e && e.name || e) + ': ' + String(e && e.message || ''), why: why }); });
+        }
+        document.addEventListener('paste', function (e) {
+            if (done) return;
+            var cd = e.clipboardData, items = cd && cd.items ? cd.items : [];
+            e.preventDefault();
+            for (var i = 0; i < items.length; i++) if (items[i].kind === 'file' && /^image\//.test(items[i].type)) { var f = items[i].getAsFile(); if (f) { useBlob(f); return; } }
+            sendText(cd ? cd.getData('text/plain') : '');
+        });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' || e.keyCode === 27) { done = true; say({ st: 'esc' }); } });
+        window.addEventListener('focus', function () { tryRead('focus'); });
+        document.addEventListener('mousedown', function () { tryRead('click'); });
+        say({ st: 'wait', focus: document.hasFocus() ? 1 : 0 });
+        tryRead('load');
+        return;
+    }
+
+    // ---- housekeeping: which pictures does any stored text mention (pages, previous versions, snapshots, every account)
+    function referenced() {
+        var refs = {}, snaps = {}, k, i, re = /\[\$img:([0-9a-z]+)/g, mm;
+        function scan(s) { re.lastIndex = 0; while ((mm = re.exec(s))) refs[mm[1]] = 1; }
+        for (i = 0; i < localStorage.length; i++) {
+            k = localStorage.key(i);
+            if (!k || k.indexOf(PREFIX) !== 0) continue;
+            k = k.slice(PREFIX.length);
+            if (IMG_KEY.test(k)) continue;
+            var sm = /^((?:a[0-9a-z]{1,7}_)?snap_[0-9]{8}_[0-9]+)_([0-9]+)$/.exec(k);
+            if (sm) (snaps[sm[1]] = snaps[sm[1]] || [])[+sm[2]] = get(k);   // parts joined in order: a mention may span two parts
+            else scan(get(k));
+        }
+        for (k in snaps) scan(snaps[k].join(''));
+        return refs;
+    }
+    function gc(m) {
+        var ns = String(m.gc), keep = {}, now = Date.now(), refs = referenced(), drop = [], i, k, im, total = 0, kept = 0;
+        (m.keep || []).forEach(function (x) { keep[String(x)] = 1; });
+        var keys = [];
+        for (i = 0; i < localStorage.length; i++) { k = localStorage.key(i); if (k && k.indexOf(PREFIX) === 0) keys.push(k.slice(PREFIX.length)); }
+        keys.forEach(function (key) {
+            im = IMG_KEY.exec(key);
+            if (!im) return;
+            if (!im[3]) total += get(key).length;
+            if ((im[1] || '') !== ns) return;
+            var id = im[2], born = parseInt(id.slice(0, 8), 36);
+            var young = !(born > 1e12) || now - born < GRACE_MS;   // an id that is no timestamp counts as young (kept)
+            if (refs[id] || keep[id] || young) { if (!im[3]) kept++; return; }
+            localStorage.removeItem(PREFIX + key);
+            if (!im[3]) drop.push(id);
+        });
+        return { gc: ns, removed: drop, kept: kept, bytes: total };
+    }
+
     // storage mode. get: {n, get:key, off} -> {key, len, off, s}
     // set: {n, set:key, text, part, parts} -> {key, part, len}; a long text comes in parts and is stored when the last part arrives
     var pending = {};
     function handle() {
         var h = location.hash.slice(1);
-        if (!h) { reply(0, { ready: 1, v: VERSION, caps: ['del', 'max', 'sw'], max: MAX }); return; }
+        if (!h) { reply(0, { ready: 1, v: VERSION, caps: ['del', 'max', 'sw', 'img'], max: MAX }); return; }
         var m;
         try { m = JSON.parse(decodeURIComponent(h)); } catch (e) { return; }
         if (!m || typeof m !== 'object') return;
@@ -84,6 +271,10 @@ textarea::-webkit-scrollbar-thumb { background: #9a9a9a; border-radius: 7px; bor
                 // only snapshot data can be removed; notes, page lists and settings are never deleted
                 if (!SNAP_KEY.test(m.del)) reply(n, { error: 'not removable' });
                 else { localStorage.removeItem(PREFIX + m.del); reply(n, { key: m.del, del: 1, len: 0 }); }
+            } else if (typeof m.gc === 'string') {
+                // unused pictures only (img_ keys of that account prefix); notes keys are never removed
+                if (!NS.test(m.gc)) reply(n, { error: 'bad prefix' });
+                else reply(n, gc(m));
             } else if (typeof m.get === 'string' && KEY.test(m.get)) {
                 var s = get(m.get), off = Math.max(0, Math.floor(Number(m.off) || 0));
                 reply(n, { key: m.get, len: s.length, off: off, s: s.slice(off, off + CHUNK) });
