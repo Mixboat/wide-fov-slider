@@ -1,5 +1,5 @@
 'use strict';
-var CACHE = 'shop-notes-page-v3';
+var CACHE = 'shop-notes-page-v4';
 var PAGE = new URL('./index.html', self.location).href;
 var ROOT = new URL('./', self.location).href;
 self.addEventListener('install', function (e) {
