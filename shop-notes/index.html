@@ -29,8 +29,8 @@ html.paste .box.busy { border-color: #7a8cff; }
     if (window.top !== window.self) return;
     var PREFIX = 'shop_notes.';
     var KEY = /^[a-z0-9_]{1,40}$/;
-    var CHUNK = 1500, MAX = 1000000, VERSION = 3;
-    var SNAP_KEY = /^snap_[0-9]{8}_[0-9]+_[0-9]+$/;
+    var CHUNK = 1500, MAX = 1000000, VERSION = 4, BIG_CHUNK = 3000, TITLE_MAX = 4000;
+    var SNAP_KEY = /^(a[0-9a-z]{1,7}_)?snap_[0-9]{8}_[0-9]+_[0-9]+$/, ACCT = /^a[0-9a-z]{1,7}_/;
     var NS = /^(a[0-9a-z]{1,7}_)?$/, IMG_ID = /^[0-9a-z]{4,16}$/;
     var IMG_KEY = /^(a[0-9a-z]{1,7}_)?img_([0-9a-z]{4,16})(_meta)?$/;
     var IMG_W = 1280, IMG_BIG = 700000, RESERVE = 200000, GRACE_MS = 600000;
@@ -40,6 +40,10 @@ html.paste .box.busy { border-color: #7a8cff; }
     } catch (e) {}
     function get(k) { try { return localStorage.getItem(PREFIX + k) || ''; } catch (e) { return ''; } }
     function reply(n, obj) { document.title = 'SN:' + n + ':' + JSON.stringify(obj); }
+    function hashOf(s) { var h = 5381; for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36) + '.' + s.length.toString(36); }
+    function utf8Len(s) { var n = 0; for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i); n += c < 0x80 ? 1 : c < 0x800 ? 2 : (c >= 0xD800 && c <= 0xDBFF) ? 4 : (c >= 0xDC00 && c <= 0xDFFF) ? 0 : 3; } return n; }
+    function hasWords(t) { return String(t || '').replace(/^\u0001SN2\n/, '').replace(/\[\[/g, 'x').replace(/\[\$[^\]]*\]/g, 'x').replace(/\[[%~@\/][^\]]*\]/g, '').trim().length > 0; }
+    function prefixOf(k) { var m = ACCT.exec(k); return m ? m[0] : ''; }
     function param(name) { var m = new RegExp('[?&]' + name + '=([^&#]*)').exec(location.search); return m ? decodeURIComponent(m[1]) : null; }
     if (/[?&]ui=1/.test(location.search)) {
         var key = location.hash.slice(1);
@@ -223,7 +227,7 @@ html.paste .box.busy { border-color: #7a8cff; }
     var pending = {};
     function handle() {
         var h = location.hash.slice(1);
-        if (!h) { reply(0, { ready: 1, v: VERSION, caps: ['del', 'max', 'sw', 'img'], max: MAX }); return; }
+        if (!h) { reply(0, { ready: 1, v: VERSION, caps: ['del', 'max', 'sw', 'img', 'chunk', 'copy'], max: MAX, chunk: BIG_CHUNK }); return; }
         var m;
         try { m = JSON.parse(decodeURIComponent(h)); } catch (e) { return; }
         if (!m || typeof m !== 'object') return;
@@ -238,6 +242,15 @@ html.paste .box.busy { border-color: #7a8cff; }
                     if (part === parts - 1) { localStorage.setItem(PREFIX + m.set, pending[m.set].join('').slice(0, MAX)); delete pending[m.set]; }
                 }
                 reply(n, { key: m.set, part: part, len: get(m.set).length });
+            } else if (typeof m.copy === 'string' && typeof m.to === 'string') {
+                var src = m.copy, dst = m.to;
+                if (!KEY.test(src) || !KEY.test(dst) || IMG_KEY.test(src) || SNAP_KEY.test(src) || /_prev$/.test(src)) reply(n, { error: 'bad copy' });
+                else if (dst !== src + '_prev' && !(SNAP_KEY.test(dst) && prefixOf(dst) === prefixOf(src))) reply(n, { error: 'bad copy target' });
+                else {
+                    var tx = get(src);
+                    localStorage.setItem(PREFIX + dst, tx);
+                    reply(n, { key: src, to: dst, len: get(dst).length, h: hashOf(tx), w: hasWords(tx) ? 1 : 0 });
+                }
             } else if (typeof m.del === 'string') {
                 if (!SNAP_KEY.test(m.del)) reply(n, { error: 'not removable' });
                 else { localStorage.removeItem(PREFIX + m.del); reply(n, { key: m.del, del: 1, len: 0 }); }
@@ -246,7 +259,14 @@ html.paste .box.busy { border-color: #7a8cff; }
                 else reply(n, gc(m));
             } else if (typeof m.get === 'string' && KEY.test(m.get)) {
                 var s = get(m.get), off = Math.max(0, Math.floor(Number(m.off) || 0));
-                reply(n, { key: m.get, len: s.length, off: off, s: s.slice(off, off + CHUNK) });
+                if (m.lim === undefined) { reply(n, { key: m.get, len: s.length, off: off, s: s.slice(off, off + CHUNK) }); return; }
+                var lim = Math.max(1, Math.min(BIG_CHUNK, Math.floor(Number(m.lim) || CHUNK))), out;
+                for (;;) {
+                    out = 'SN:' + n + ':' + JSON.stringify({ key: m.get, len: s.length, off: off, s: s.slice(off, off + lim) });
+                    if ((out.length <= TITLE_MAX && utf8Len(out) <= TITLE_MAX) || lim <= 64) break;
+                    lim = Math.max(64, Math.floor(lim * 0.75));
+                }
+                document.title = out;
             }
         } catch (e) { reply(n, { error: String(e && e.message || e) }); }
     }
