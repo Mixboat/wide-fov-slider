@@ -33,7 +33,7 @@ html.paste.light .box.busy { border-color: #335eff; }
     if (window.top !== window.self) return;
     var PREFIX = 'shop_notes.';
     var KEY = /^[a-z0-9_]{1,40}$/;
-    var CHUNK = 1500, MAX = 1000000, VERSION = 5, BIG_CHUNK = 3000, TITLE_MAX = 4000;
+    var CHUNK = 1500, MAX = 1000000, VERSION = 6, BIG_CHUNK = 3000, TITLE_MAX = 4000;
     var SNAP_KEY = /^(a[0-9a-z]{1,7}_)?snap_[0-9]{8}_[0-9]+_[0-9]+$/, ACCT = /^a[0-9a-z]{1,7}_/;
     var NS = /^(a[0-9a-z]{1,7}_)?$/, IMG_ID = /^[0-9a-z]{4,16}$/;
     var IMG_KEY = /^(a[0-9a-z]{1,7}_)?img_([0-9a-z]{4,16})(_meta)?$/;
@@ -92,7 +92,9 @@ html.paste.light .box.busy { border-color: #335eff; }
         return;
     }
     if (/[?&]paste=1/.test(location.search)) {
-        document.documentElement.className = param('theme') === 'light' ? 'paste light' : 'paste';
+        function pasteTheme() { var m = /(?:^#|&)theme=(light|dark)/.exec(location.hash); var t = m ? m[1] : param('theme'); document.documentElement.className = t === 'light' ? 'paste light' : 'paste'; }
+        pasteTheme();
+        window.addEventListener('hashchange', pasteTheme);
         var ns = param('ns') || '', id = param('id') || '', pseq = 0, done = false, busy = false;
         function say(o) { document.title = 'SNP:' + (++pseq) + ':' + JSON.stringify(o); }
         var box = document.createElement('div');
@@ -231,7 +233,7 @@ html.paste.light .box.busy { border-color: #335eff; }
     var pending = {};
     function handle() {
         var h = location.hash.slice(1);
-        if (!h) { reply(0, { ready: 1, v: VERSION, caps: ['del', 'max', 'sw', 'img', 'chunk', 'copy', 'theme'], max: MAX, chunk: BIG_CHUNK }); return; }
+        if (!h) { reply(0, { ready: 1, v: VERSION, caps: ['del', 'max', 'sw', 'img', 'chunk', 'copy', 'theme', 'themehash'], max: MAX, chunk: BIG_CHUNK }); return; }
         var m;
         try { m = JSON.parse(decodeURIComponent(h)); } catch (e) { return; }
         if (!m || typeof m !== 'object') return;
